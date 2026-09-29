@@ -1,53 +1,38 @@
-# Maize Leaf Disease Detection using CNN
+# Maize Leaf Disease Classification with YOLO26
 
-## Problem Definition
+Classify a maize leaf image into one of four classes — **Healthy**, **Common Rust**, **Gray Leaf Spot**, **Blight** — using a YOLO26 classification model.
 
-Maize is heavily threatened by foliar diseases — Common Rust, Gray Leaf Spot and Blight — which
-spread fast and can cut yields by 30–50%. The current diagnosis method is visual inspection by
-human agronomists, which is slow, subjective, error-prone and impossible to scale across large
-plantations. Many smallholder farmers have no access to a plant pathologist, so disease is
-detected only after irreversible damage. This project replaces manual inspection with automatic,
-image-based diagnosis.
+## Problem Statement
 
-## Project Objective
+Maize foliar diseases spread rapidly and can cut yields by 30–50%. The current diagnosis method is visual inspection by a human agronomist: slow, subjective, error-prone, and impossible to scale across large plantations. Many smallholder farmers have no access to a plant pathologist, so disease is caught only after irreversible damage.
 
-Train a Convolutional Neural Network to classify a maize leaf image into one of four classes —
-**Healthy, Common Rust, Gray Leaf Spot, Blight** — so a farmer can photograph a leaf and get an
-instant diagnosis.
+**Objective:** classify a maize leaf image into one of four classes so a farmer can photograph a leaf and get an instant diagnosis.
 
-Objectives:
-1. Build a CNN classifier for the 4-class problem.
-2. Clean and augment the data to handle noisy, real-world field images.
-3. Compare CNN architectures and select the best performer.
-4. Analyse errors and reduce them.
-5. Deploy a simple prediction tool.
+## Research Questions
+
+1. How accurately can a pretrained YOLO26 classifier separate these four classes?
+2. Which classes get confused with each other, and why — background clutter, lighting, or the visual overlap between Blight and Gray Leaf Spot?
+3. How do model size, augmentation, and training time trade off against accuracy on a dataset this small?
 
 ## Project Overview
 
 A supervised image-classification pipeline:
 
 ```
-Data → Cleaning → EDA → Train/Val/Test Split → Augmentation → CNN Training
-     → Evaluation → Error Analysis → Error Reduction → Prediction
+Data → Validation → 80/20 Split → YOLO26 Classification → Evaluation
+     → Inference → Error Analysis → Error Reduction → Export
 ```
 
-A CNN learns features directly from raw pixels — edges and colour blobs in early layers,
-lesion shapes and textures in deeper ones — so no hand-crafted features are needed. The
-dataset is imbalanced (Gray Leaf Spot has ~43% fewer images than Common Rust), so class
-weights and macro-averaged metrics are used so the model can't just favour majority classes.
+This is a **classification** problem, not a detection one: the dataset gives one label per photo and contains no bounding boxes, so the model is asked *what disease is this* rather than *where on the leaf is the lesion*.
 
-## Research Questions
+- **Model:** `yolo26n-cls.pt`, the smallest and fastest YOLO26 classification model.
+- **Hardware:** Apple M4 GPU (MPS). No CUDA on this machine.
+- **Speed:** `imgsz=256` (3,852 of 4,188 images are already 256×256), `batch=64` on the GPU, and no RAM image cache — which was measured to be *slower* here.
+- **Runtime:** ~2–2.5 minutes for sections 0–6, plus ~10 minutes for the two retraining experiments in section 7.
 
-1. Which CNN architecture (custom CNN, VGG16, ResNet50, InceptionV3, MobileNetV2) gives the
-   highest accuracy, and how do model size and training time trade off against it?
-2. How do augmentation and class-balancing (rotation, flips, colour jitter, class weights)
-   affect generalisation, especially recall on the minority Gray Leaf Spot class?
-3. Which disease pairs are most often confused, and what causes it — background clutter,
-   lighting, or the visual overlap between Common Rust and Blight?
+## Dataset Overview
 
-## Data Source
-
-<https://www.kaggle.com/datasets/smaranjitghose/corn-or-maize-leaf-disease-dataset>
+**Source:** [Kaggle — Corn or Maize Leaf Disease Dataset](https://www.kaggle.com/datasets/smaranjitghouse/corn-or-maize-leaf-disease-dataset)
 
 | Class | Images | Share |
 |---|---|---|
@@ -57,99 +42,81 @@ weights and macro-averaged metrics are used so the model can't just favour major
 | Gray_Leaf_Spot | 574 | 13.7% |
 | **Total** | **4,188** | **100%** |
 
-Real-world leaf photographs (JPEG/JPG). Issues in the raw data: mixed file extensions
-(`.jpg`/`.JPG`/`.jpeg`), varying resolutions, non-uniform backgrounds and lighting, possible
-duplicate captures, and label noise where harmless blemishes resemble early-stage disease.
-Stored locally as `data/<Class_Name>/*.jpg`.
+Real-world leaf photographs stored as `data/<Class_Name>/*.jpg`, where the folder name *is* the label. The split is 80/20 (3,352 train / 836 validation). The dataset is imbalanced: Gray Leaf Spot has 2.3× fewer images than Common Rust, and it is also the class the model struggles with most.
 
-## Tools
+**Known issues in the raw data:**
 
-Python 3 · Jupyter Notebook · NumPy / pandas · PyTorch / torchvision · OpenCV / Pillow ·
-Matplotlib / Seaborn · scikit-learn
+- Mixed file extensions (`.jpg`, `.JPG`, `.jpeg`) — 501 validation images end in uppercase `.JPG`, which a lowercase `*.jpg` glob silently misses.
+- Mixed colour modes: 4 images are RGBA and 1 is CMYK.
+- Resolutions from 180×116 up to 5184×5184, though 3,852 images are exactly 256×256.
+- Non-uniform backgrounds and lighting, plus possible label noise where harmless blemishes resemble early-stage disease.
 
 ## Project Structure
 
 ```
 maize_disease/
-├── data/                          # Dataset (4 class folders)
-│   ├── Blight/                   #   1,146 images
-│   ├── Common_Rust/              #   1,306 images
-│   ├── Gray_Leaf_Spot/           #     574 images
-│   └── Healthy/                  #   1,162 images
-├── Maize_Disease_Detection.ipynb  # End-to-end pipeline
-├── README.md                      # Documentation
-└── requirements.txt               # Dependencies
+├── data/                              # source images, one folder per class
+│   ├── Blight/
+│   ├── Common_Rust/
+│   ├── Gray_Leaf_Spot/
+│   └── Healthy/
+├── models/                            # pretrained + trained weights
+│   ├── yolo26n-cls.pt                 # pretrained baseline
+│   ├── yolo26s-cls.pt                 # larger model (section 7.5)
+│   └── maize_disease_yolo26n.pt       # trained model, ready to use
+├── Maize_Disease_Detection_YOLO.ipynb # the full 0-8 pipeline
+├── .gitignore
+└── README.md
 ```
 
-Labels come from folder names via `ImageFolder`, so new images dropped into a folder are
-picked up automatically.
+Generated during a run and safe to delete:
+
+- `data_cls/` — 80/20 train/val split created by notebook section 2
+- `data_balanced/` — oversampled training set created by section 7.2
+- `runs/classify/` — training logs, plots, confusion matrices, checkpoints
 
 ## Notebook Structure
 
-1. **Problem statement**
-2. **Data loading**
-3. **Data cleaning**
-4. **EDA**
-5. **Train/val/test split**
-6. **Data augmentation**
-7. **Model training**
-8. **Evaluation**
-9. **Error analysis**
-10. **Error reduction**
-11. **Save & predict**
-12. **Conclusion & future work**
-
-## Methodology: Neural Networks (Supervised — Classification)
-
-**When to use:** 
-- Large datasets with highly non-linear patterns, especially unstructured data
-(images, text, audio) where hand-crafted features are hard to design.
-
-**Dataset needed:** 
-- Large volume ideally, as numeric tensors (images as pixel arrays). 4,188
-images is moderate — workable because transfer learning starts from ImageNet features instead of
-learning vision from scratch, but not enough for training a deep CNN from zero.
-
-**Cleaning & why:** 
-- Discard corrupt files that break loading; remove duplicates that would put the same leaf in train and test
-- Scale/normalise inputs
-- Resize to a consistent 224×224
-- Augment to grow the effective dataset size and build invariance to how leaves are photographed.
-
-**EDA & why:** 
-- Confirm the volume is sufficient (it determines the modelling approach); 
-- Check class balance, which exposes the 13.7% vs 31.2% imbalance driving class weights; 
-- Sample images to sanity-check labels and quality; per-class colour statistics confirm the classes are separable.
-
-**Train/test split:** 
-- Stratified train/validation/test, with a dedicated validation set for early
-stopping — not just CV, since training is expensive.
-
-**Model training:** 
-- Forward pass computes predictions, the loss measures error, backpropagation
-computes gradients, and an optimiser (Adam) updates weights over many epochs.
-
-**Evaluation metrics:** 
-- Classification — accuracy, precision, recall, F1, ROC-AUC, plus
-train/validation loss curves.
-
-**Error analysis & why:** 
-- Train vs. validation curves catch overfitting and underfitting
-- Inspecting misclassified examples shows whether labels, augmentation or the architecture need
-fixing.
-
-**Conclusion:** 
-- A CNN is the right tool for this problem because leaf lesions are complex,
-non-linear visual patterns that no hand-written rule can capture, and the model learns the
-features itself. With 4,188 images, transfer learning from a pretrained backbone is the practical
-route to high accuracy rather than training a deep network from scratch.
-
-**Way Forward:**
-- Deploy as a mobile app with on-device (edge/TFLite) inference so farmers get diagnoses offline.
-- Extend the dataset with more diseases, other crops, and images from real field conditions
-  across different seasons and regions.
-- Add explainability (Grad-CAM heatmaps) to show *which* leaf region drove the prediction,
-  addressing the black-box limitation and building farmer trust.
-- Add severity grading and treatment recommendations, turning classification into actionable
-  guidance.
-- Track field performance over time and retrain on newly collected data to handle drift.
+- **0. Environment Setup & Configuration**
+  - 0.1 Install Dependencies
+  - 0.2 Import Libraries
+  - 0.3 Configuration
+- **1. Data Preparation & Validation**
+  - 1.1 Dataset Paths
+  - 1.2 Dataset Validation
+  - 1.3 Class Inspection
+- **2. Create Dataset Folder Structure**
+  - 2.1 Generate Folder Structure & Split
+  - 2.2 Verify Split
+- **3. Model Initialization & Training**
+  - 3.1 Load Pre-trained Classification Model
+  - 3.2 Configure Training Arguments
+  - 3.3 Start Training
+  - 3.4 Visualize Training Results
+- **4. Model Evaluation & Validation**
+  - 4.1 Run Validation
+  - 4.2 Display Metrics
+  - 4.3 Confusion Matrix
+- **5. Inference & Visual Inspection**
+  - 5.1 Single Image Prediction
+  - 5.2 Batch Prediction
+  - 5.3 Manual QA
+  - 5.4 Predict on a Single Custom Image
+- **6. Error Analysis**
+  - 6.1 Collect Misclassified Images
+  - 6.2 Per-Class Error Rate
+  - 6.3 Top Confusion Pairs
+  - 6.4 Confidence Distribution of Errors
+  - 6.5 Visualize Misclassified Samples
+  - 6.6 Identify Error Patterns (lighting, blur, background, etc.)
+- **7. Error Reduction**
+  - 7.1 Data Augmentation (flip, rotate, color jitter, blur)
+  - 7.2 Class Balancing (oversample, undersample, class weights)
+  - 7.3 Add More Data for Weak Classes
+  - 7.4 Hyperparameter Tuning (lr, epochs, batch size, img size)
+  - 7.5 Try Larger Model (yolo26s-cls, yolo26m-cls)
+  - 7.6 Re-train & Compare Metrics
+  - 7.7 Iterate Until Target Accuracy Reached
+- **8. Model Export & Deployment (Optional)**
+  - 8.1 Export Model
+  - 8.2 Save Model Weights
