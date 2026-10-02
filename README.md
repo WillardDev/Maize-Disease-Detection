@@ -1,6 +1,6 @@
 # Maize Leaf Disease Classification: YOLO26 vs Custom CNN
 
-Classify a maize leaf image into one of four classes — **Healthy**, **Common Rust**, **Gray Leaf Spot**, **Blight** — and compare two models trained on the same split: a pretrained YOLO26 classifier and a custom CNN built from scratch in Keras.
+Classify a maize leaf image into one of four classes — **Blight**, **Common Rust**, **Gray Leaf Spot**, **Healthy** — and compare two models trained on the same split: a pretrained YOLO26 classifier and a custom CNN built from scratch in Keras.
 
 ## Problem Statement
 
@@ -14,16 +14,30 @@ Maize foliar diseases spread rapidly and can cut yields by 30–50%. The current
 2. How close does a small custom CNN get, and is it small and fast enough to be worth deploying instead?
 3. Which classes get confused with each other, and why — background clutter, lighting, or the visual overlap between Blight and Gray Leaf Spot?
 4. How do model size, augmentation, and training time trade off against accuracy on a dataset this small?
+5. Which pixels actually drive the final model's decision, and is it reading the lesion or the background?
+
+## Results
+
+| Configuration | Val macro F1 | Val accuracy | Test accuracy |
+|---|---|---|---|
+| Model A — YOLO26n-cls (baseline) | 93.75% | 95.04% | 94.56% |
+| Model B — Custom CNN | 88.65% | 88.96% | 89.44% |
+| `exp_a` — stronger augmentation | 94.68% | 95.84% | — |
+| **`exp_b` — YOLO26s-cls (final)** | **95.01%** | **96.00%** | **95.68%** |
+
+The 96% target is met on validation (96.00%) but **not** on test (95.68%). The full report is written to `model_comparison.md`.
+
+Selection is on **validation macro F1** only. Test is read once, in section 9.3, with the final model.
 
 ## Project Overview
 
 A supervised image-classification pipeline with **two models** and a head-to-head comparison:
 
 ```
-Data → Validation → 70/15/15 Split
+Data → Validation → 70/15/15 Split + Train Levelling
     → Model A: YOLO26n-cls (transfer learning)  ─┐
     → Model B: Custom CNN (Keras, from scratch)  ─┴→ Comparison → best model
-    → Inference → Error Analysis → Error Reduction → Export
+    → Error Analysis → Error Reduction → Explainability → Inference → Export
 ```
 
 This is a **classification** problem, not a detection one: the dataset gives one label per photo and contains no bounding boxes, so the model is asked *what disease is this* rather than *where on the leaf is the lesion*.
@@ -44,25 +58,28 @@ Model A starts from ImageNet-pretrained weights, so it only has to learn four le
 | Class | Images | Share |
 |---|---|---|
 | Common_Rust | 1,306 | 31.2% |
-| Healthy | 1,162 | 27.7% |
+| Healthy | 1,162 | 27.8% |
 | Blight | 1,146 | 27.4% |
-| Gray_Leaf_Spot | 574 | 13.7% |
-| **Total** | **4,188** | **100%** |
+| Gray_Leaf_Spot | 572 | 13.7% |
+| **Total** | **4,186** | **100%** |
 
-Real-world leaf photographs stored as `data/<Class_Name>/*.jpg`, where the folder name *is* the label. The split is **70 / 15 / 15** (2,936 train / 626 validation / 626 test), and each part has one job:
+Real-world leaf photographs stored as `data/<Class_Name>/*.jpg`, where the folder name *is* the label. Files are indexed by **content hash** first, so the 2 byte-identical photographs that sat in two different class folders under different labels are dropped before anything else runs. 4,188 files become **4,186** usable images.
 
-- **train** — what both models learn from.
-- **val** — loss curves every epoch, and the score for the section 7 experiments.
-- **test** — used only for the final comparison and the report. Nothing is tuned on it, which is what makes the section 5 comparison fair.
+The split is **70 / 15 / 15**, and each part has one job:
 
-The dataset is imbalanced: Gray Leaf Spot has 2.3× fewer images than Common Rust, and it is also the class the model struggles with most.
+- **train** — 3,664 images. The smaller classes are levelled up to 916 per class by **repetition**, done once in section 2.1 so both frameworks train on exactly the same images.
+- **val** — 625 images, natural distribution. Every model-selection decision in the notebook is made here.
+- **test** — 625 images, natural distribution. Read once, in 9.3, with the final model.
+
+Levelling the *training* split does not create new photographs, so Gray Leaf Spot is still the hardest class underneath. That limitation is documented in section 10 rather than hidden.
 
 **Known issues in the raw data:**
 
 - Mixed file extensions (`.jpg`, `.JPG`, `.jpeg`) — several hundred files end in uppercase `.JPG`, which a lowercase `*.jpg` glob silently misses.
 - Mixed colour modes: 4 images are RGBA and 1 is CMYK.
 - Resolutions from 180×116 up to 5184×5184, though 3,852 images are exactly 256×256.
-- Non-uniform backgrounds and lighting, plus possible label noise where harmless blemishes resemble early-stage disease.
+- Non-uniform backgrounds and lighting.
+- **2 cross-class duplicates**: the same photograph filed under both Blight and Gray Leaf Spot, so one of the two labels is simply wrong. Both are dropped.
 
 ## Project Structure
 
@@ -73,33 +90,59 @@ maize_disease/
 │   ├── Common_Rust/
 │   ├── Gray_Leaf_Spot/
 │   └── Healthy/
-├── models/                            # pretrained + trained weights
-│   ├── yolo26n-cls.pt                 # Model A baseline
-│   ├── yolo26s-cls.pt                 # larger variant (section 7.5)
-│   ├── maize_disease_yolo26n.pt       # trained YOLO model, ready to use
-│   └── maize_disease_cnn.keras        # trained CNN (only if it won section 5.7)
-├── Maize_Disease_Detection_YOLO.ipynb # the full 0-9 pipeline
-├── .gitignore
-└── README.md
+├── models/
+│   ├── yolo26n-cls.pt                 # Model A baseline (pretrained)
+│   ├── yolo26s-cls.pt                 # larger variant (section 7.3)
+│   └── maize_disease_yolo26s.pt       # final trained model, ready to use
+├── Maize_Disease_Detection_YOLO.ipynb # the full 0-11 pipeline
+├── slides_maize_disease.pptx          # 19-slide talk: every figure with its insight
+├── requirements.txt
+├── README.md
+└── model_comparison.md                # final report, written by section 11.3
 ```
 
 Generated during a run and safe to delete:
 
-- `data_cls/` — the 70/15/15 train/val/test split created by notebook section 2
-- `data_balanced/` — oversampled training set created by section 7.2
+- `data_cls/` — the 70/15/15 split, created by section 2.1 and rebuilt every run
 - `runs/classify/`, `runs/cnn/` — training logs, plots, confusion matrices, checkpoints
-- `model_comparison.md` — the final report written by section 9.3
+- `model_comparison.md` — the final report
 
 ## Requirements
 
 ```
-ultralytics      # Model A
-tensorflow       # Model B
-opencv-python    # image reading
-scikit-learn     # confusion matrices and classification reports
+pip install -r requirements.txt
 ```
 
-Section 0.1 installs the first two if they are missing. `tensorflow` pulls in Keras, and on macOS it runs on the CPU — there is no MPS support, which is a large part of why Model B trains slower than Model A.
+That covers `ultralytics` (Model A), `tensorflow` (Model B), `opencv-python` (image reading), `scikit-learn` (confusion matrices and reports), `nbconvert` (to run the notebook end to end) and `python-pptx` (to rebuild the deck). `tensorflow` pulls in Keras. On Apple silicon it runs on the CPU, which is a large part of why Model B trains slower than Model A.
+
+`requirements.txt` pins the exact versions this project was verified against.
+
+> **Note:** this project was developed against `tensorflow 2.22.0rc0` with `keras-nightly`, because no stable TensorFlow release supports Python 3.14. A stable Python (3.11–3.12) with a stable TensorFlow is recommended for reproducibility.
+
+## Running the Notebook
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+jupyter nbconvert --to notebook --execute --inplace Maize_Disease_Detection_YOLO.ipynb
+```
+
+Expect roughly 25–35 minutes, most of it in section 7. Use the `maize-disease` kernel so TensorFlow resolves from the virtualenv.
+
+## Using the Trained Model
+
+```python
+from ultralytics import YOLO
+
+model = YOLO("models/maize_disease_yolo26s.pt")
+results = model.predict("data/Healthy/Corn_Health (1).jpg", verbose=False)
+
+result = results[0]                      # predict() returns a list, even for one image
+label = result.names[result.probs.top1]
+print(label, f"{float(result.probs.top1conf):.1%}")   # -> Healthy 100.0%
+```
+
+The model expects images resized to **256×256** and the class order `Blight, Common_Rust, Gray_Leaf_Spot, Healthy`.
 
 ## Notebook Structure
 
@@ -110,12 +153,12 @@ Section 0.1 installs the first two if they are missing. `tensorflow` pulls in Ke
   - Set Random Seeds (reproducibility)
 - **1. Data Preparation & Validation**
   - 1.1 Dataset Paths
-  - 1.2 Dataset Validation
+  - 1.2 Dataset Validation (content-hash dedupe)
   - 1.3 Class Inspection
   - 1.4 Class Distribution Check
 - **2. Create Dataset Folder Structure**
-  - 2.1 Generate Folder Structure & Split
-  - 2.2 Verify Split
+  - 2.1 Generate Folder Structure, Split & Level the Training Classes
+  - 2.2 Verify Split (leak check)
 - **3. Model A: YOLO26n-cls Pipeline**
   - 3.1 Load Pre-trained Classification Model
   - 3.2 Configure Training Arguments
@@ -125,6 +168,7 @@ Section 0.1 installs the first two if they are missing. `tensorflow` pulls in Ke
   - 3.6 Display Metrics
   - 3.7 Confusion Matrix
   - 3.8 YOLO Metrics
+  - *Transfer learning: what it actually does here*
 - **4. Model B: Custom CNN Pipeline**
   - 4.1 Build Data Generators (train/val/test)
   - 4.2 Define CNN Architecture (Conv → Pool → Conv → Pool → Dense → Softmax)
@@ -143,28 +187,30 @@ Section 0.1 installs the first two if they are missing. `tensorflow` pulls in Ke
   - 5.4 Inference Speed Comparison
   - 5.5 Accuracy vs Speed Trade-off Plot
   - 5.6 Confusion Matrix Comparison
-  - 5.7 Select Best Model
-- **6. Error Analysis on the Best Model**
+  - 5.7 Select Best Model *(validation macro F1)*
+- **6. Error Analysis (Best Model)**
   - 6.1 Collect Misclassified Images
   - 6.2 Per-Class Error Rate
   - 6.3 Top Confusion Pairs
   - 6.4 Confidence Distribution of Errors
   - 6.5 Visualize Misclassified Samples
   - 6.6 Identify Error Patterns (lighting, blur, background, etc.)
-- **7. Error Reduction**
-  - 7.1 Data Augmentation (flip, rotate, color jitter, blur)
-  - 7.2 Class Balancing (oversample, undersample, class weights)
-  - 7.3 Add More Data for Weak Classes
-  - 7.4 Hyperparameter Tuning (lr, epochs, batch size, img size)
-  - 7.5 Try Larger Variant (yolo26s-cls OR deeper CNN)
-  - 7.6 Re-train & Compare Metrics
-  - 7.7 Iterate Until Target Accuracy Reached
-- **8. Inference & Visual Inspection (Final Model)**
-  - 8.1 Single Image Prediction
-  - 8.2 Batch Prediction
-  - 8.3 Manual QA
-  - 8.4 Predict on a Single Custom Image
-- **9. Model Export & Deployment**
-  - 9.1 Export Model
-  - 9.2 Save Model Weights
-  - 9.3 Save Final Comparison Report
+- **7. Error Reduction (Best Model)**
+  - 7.1 Data Augmentation (flip, colour jitter)
+  - 7.2 Hyperparameter Tuning (lr, epochs, batch size, img size)
+  - 7.3 Try Larger Variant (yolo26s-cls OR deeper CNN)
+  - 7.4 Re-train & Compare Metrics
+  - 7.5 Pick the Winner & Check the Target
+- **8. Model Explainability (Grad-CAM)**
+  - 8.1 Grad-CAM on the Final Model's Biggest Confusions
+  - 8.2 Lesion or Background: How Much of the Frame Lights Up
+- **9. Inference & Visual Inspection (Final Model)**
+  - 9.1 Single Image Prediction
+  - 9.2 Batch Prediction
+  - 9.3 Manual QA
+  - 9.4 Predict on a Single Custom Image
+- **10. Limitations & Intended Use**
+- **11. Model Export & Deployment (Optional)**
+  - 11.1 Export Model
+  - 11.2 Save Model Weights
+  - 11.3 Save Final Comparison Report

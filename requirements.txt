@@ -1,0 +1,27 @@
+# Maize Leaf Disease Classification - dependencies
+#
+# Pinned to the versions this project was developed and verified against.
+# See the note below about the TensorFlow / Python 3.14 combination.
+
+ultralytics==8.4.165
+tensorflow==2.22.0rc0
+opencv-python==5.0.0.93
+scikit-learn==1.9.0
+numpy==2.5.0
+matplotlib==3.11.1
+pillow==12.2.0
+
+# running the notebook end to end
+nbconvert==7.17.1
+nbformat==5.11.0
+ipython==9.14.1
+jupyter-client==8.9.1
+
+# building the presentation deck (optional)
+python-pptx==1.0.2
+
+# NOTE: tensorflow 2.22.0rc0 and the versions above were used on Python 3.14,
+# where no stable TensorFlow release is available yet (keras-nightly was used
+# during development). On Python 3.11 or 3.12 install a stable tensorflow
+# instead and let pip resolve it - the notebook code itself does not depend on
+# any of these pins.
