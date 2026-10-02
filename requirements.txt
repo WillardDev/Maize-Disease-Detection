@@ -11,8 +11,9 @@ numpy==2.5.0
 matplotlib==3.11.1
 pillow==12.2.0
 
-# running the Streamlit app (app.py)
-streamlit==1.58.0
+# running the Streamlit app (app.py). 1.64 is the floor: it added the
+# `resolution` argument to st.camera_input, used for the in-browser capture.
+streamlit==1.64.0
 
 # running the notebook end to end
 nbconvert==7.17.1

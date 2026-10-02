@@ -22,6 +22,13 @@ The interface is dark, which suits the subject and keeps projected or
 night-time use comfortable. Because a single file has to stay self-contained,
 the theme is applied with injected CSS rather than a ``.streamlit/config.toml``.
 
+A user can either upload a photo or take one with the camera via
+``st.camera_input``. Both paths end up as the same ``UploadedFile`` and flow
+through the identical decode and analysis code, so a capture is treated exactly
+like an upload. Note that browsers only grant camera access on a secure
+context, so the camera works on ``localhost`` but not on a phone reaching the
+app over plain HTTP - the UI says so where it matters.
+
 Design notes
 ------------
 * Every remote call is wrapped in try/except, so a missing weight file, a
@@ -562,16 +569,50 @@ tab_detect, tab_perf = st.tabs(["Disease Detection", "Model Performance"])
 with tab_detect:
     st.markdown("### Disease detection")
     st.caption(
-        f"Upload one maize leaf photograph. The classifier expects images at "
-        f"{IMG_SIZE}x{IMG_SIZE} and will resize what you give it."
+        f"Upload one maize leaf photograph, or take one with your camera. The "
+        f"classifier expects images at {IMG_SIZE}x{IMG_SIZE} and will resize what "
+        f"you give it."
     )
 
-    uploaded = st.file_uploader(
-        "Maize leaf photograph",
-        type=["jpg", "jpeg", "png"],
-        accept_multiple_files=False,
+    source = st.radio(
+        "Photo source",
+        ["Upload a photo", "Use the camera"],
+        horizontal=True,
         label_visibility="collapsed",
     )
+
+    if source == "Use the camera":
+        uploaded = st.camera_input(
+            "Take a photo of a maize leaf",
+            help="Allow camera access when your browser asks, then capture.",
+        )
+        if uploaded is None:
+            st.info(
+                "Nothing captured yet. Allow camera access when the browser asks, "
+                "then frame a single leaf in good light and take the photo.",
+                icon="\U0001F4F7",
+            )
+            with st.expander("If the camera does not appear"):
+                st.markdown(
+                    "Browsers only expose the camera on a **secure context**. "
+                    "`localhost` counts as secure, so it works on the machine "
+                    "running Streamlit. Reaching the app from a phone over "
+                    "`http://192.168.x.x:8501` does **not**, so the camera is "
+                    "hidden on the handset and you must upload instead.\n\n"
+                    "To get the camera working on a phone you need HTTPS in front "
+                    "of the app - for example a tunnel such as `cloudflared tunnel "
+                    "--url http://localhost:8501`, or a reverse proxy with a "
+                    "certificate. Both are outside what this script can do for you, "
+                    "since HTTPS has to terminate somewhere other than the Streamlit "
+                    "process."
+                )
+    else:
+        uploaded = st.file_uploader(
+            "Maize leaf photograph",
+            type=["jpg", "jpeg", "png"],
+            accept_multiple_files=False,
+            label_visibility="collapsed",
+        )
 
     if uploaded is None:
         # Clean empty state rather than a bare "please upload" line.
@@ -593,6 +634,13 @@ with tab_detect:
                   <div class="field">
                     <div class="field-key">Accepted formats</div>
                     <div class="field-val">JPG, JPEG, PNG</div>
+                  </div>
+                  <div class="field">
+                    <div class="field-key">In the field</div>
+                    <div class="field-val">
+                      Switch to <strong>Use the camera</strong> above to skip the
+                      file step entirely.
+                    </div>
                   </div>
                 </div>
                 """,

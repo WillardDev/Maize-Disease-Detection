@@ -124,8 +124,8 @@ If you only want the app, `pip install streamlit ultralytics pillow` is enough �
 
 ## Running the App
 
-`app.py` is self-contained and dark-themed — upload a maize leaf photo and it predicts the class
-and shows the confidence breakdown for every class.
+`app.py` is self-contained and dark-themed — take a photo with the camera or upload one, and the
+app predicts the class and shows the confidence breakdown for every class.
 
 ```bash
 source .venv/bin/activate
@@ -143,6 +143,27 @@ per session. It has two tabs: detection, and the measured model performance. Dis
 favourable conditions and what to do are shown for the class the model just predicted, not as a
 catalogue of all four. It handles EXIF orientation, so photos taken on a phone are not rotated
 incorrectly.
+
+### Camera capture on a phone
+
+The **Use the camera** option uses `st.camera_input`, so there is no separate file step in the
+field. Browsers only expose a camera on a *secure context*, which has one consequence worth
+knowing before you hand this to someone in a field:
+
+| How you reach the app | Camera works? |
+| --- | --- |
+| `streamlit run app.py`, then open `http://localhost:8501` on the same machine | Yes |
+| `http://<lan-ip>:8501` from a phone | No — not a secure context |
+| Behind an HTTPS tunnel or reverse proxy | Yes |
+
+For phone capture, put HTTPS in front of Streamlit, for example with a tunnel:
+
+```bash
+cloudflared tunnel --url http://localhost:8501
+```
+
+HTTPS has to terminate somewhere other than the Streamlit process, so this is deployment work the
+script cannot do for you. Without it, phone users fall back to the uploader.
 
 ## Running the Notebook
 
