@@ -3,9 +3,12 @@ data_cls/
 data_balanced/
 runs/
 
-# Model weights are large binaries - keep the folder, not the files
+# Model weights are large binaries - keep the folder, not the files.
+# The fine-tuned checkpoint MUST be tracked: the Streamlit app cannot classify
+# anything without it, and a deploy from git will not have it otherwise.
 *.pt
 *.keras
+!models/maize_disease_yolo26s.pt
 !models/.gitkeep
 
 # Python

@@ -91,11 +91,12 @@ maize_disease/
 │   ├── Gray_Leaf_Spot/
 │   └── Healthy/
 ├── models/
-│   ├── yolo26n-cls.pt                 # Model A baseline (pretrained)
-│   ├── yolo26s-cls.pt                 # larger variant (section 7.3)
-│   └── maize_disease_yolo26s.pt       # final trained model, ready to use
+│   ├── yolo26n-cls.pt                 # Model A baseline (pretrained, not committed)
+│   ├── yolo26s-cls.pt                 # larger variant (section 7.3, not committed)
+│   └── maize_disease_yolo26s.pt       # final trained model - TRACKED IN GIT, the app needs it
 ├── Maize_Disease_Detection_YOLO.ipynb # the full 0-11 pipeline
 ├── app.py                             # single-file Streamlit app (detection, info, metrics)
+├── .streamlit/config.toml             # headless server + dark theme for deployment
 ├── slides_maize_disease.pptx          # 19-slide talk: every figure with its insight
 ├── requirements.txt
 ├── README.md
@@ -143,6 +144,34 @@ per session. It has two tabs: detection, and the measured model performance. Dis
 favourable conditions and what to do are shown for the class the model just predicted, not as a
 catalogue of all four. It handles EXIF orientation, so photos taken on a phone are not rotated
 incorrectly.
+
+### Deploying: the weights must be in git
+
+The 11 MB checkpoint is deliberately the one exception to the "keep binaries out of git" rule.
+`.gitignore` ignores `*.pt`, but `models/maize_disease_yolo26s.pt` is negated back in, because
+**a deploy from git cannot classify anything without it.** If the weights are absent, the sidebar
+shows a red *Load failed* pill, **Run Detection** is disabled, and the app prints the exact
+`git add -f` command to fix it.
+
+```bash
+git add .gitignore app.py .streamlit requirements.txt
+git add -f models/maize_disease_yolo26s.pt   # or just `git add -A`, the negation covers it
+git commit -m "Make Streamlit deployable: track the fine-tuned weights"
+git push
+```
+
+Two further points about a hosted deployment:
+
+- The app will **not** silently fall back to `yolo26n-cls.pt` if the fine-tuned weights are
+  missing. That backbone has never seen maize disease, so switching to it would emit confident
+  nonsense about ImageNet classes. It is only used if the checkbox asks for it explicitly.
+- `requirements.txt` still carries the full notebook stack, including `tensorflow==2.22.0rc0`.
+  That is not needed to run the app and is the most likely source of a slow or failed Cloud
+  build. Splitting it into a lean `requirements.txt` for the app plus
+  `requirements-notebook.txt` is the recommended next step.
+
+`.streamlit/config.toml` sets `headless`, a 20 MB upload cap and the dark theme, so the page is
+dark before the injected CSS is even parsed.
 
 ### Camera capture on a phone
 

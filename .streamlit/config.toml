@@ -1,0 +1,21 @@
+# Streamlit configuration. Primarily for Streamlit Community Cloud, which
+# reads this file automatically; it also applies to a local `streamlit run`.
+
+[server]
+# Do not try to open a browser or collect usage stats on a headless host.
+headless = true
+# Phone photos can be large; 20 MB is plenty for a leaf photograph and keeps a
+# stray video from filling the session.
+maxUploadSize = 20
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+# Matches the injected CSS in app.py so the page is dark even before that
+# stylesheet is parsed, and so Streamlit's own widgets pick dark defaults.
+base = "dark"
+primaryColor = "#FF8A3D"
+backgroundColor = "#0C1420"
+secondaryBackgroundColor = "#151F2E"
+textColor = "#E8EDF5"

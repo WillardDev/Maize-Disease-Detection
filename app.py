@@ -390,11 +390,53 @@ def load_model(model_path: str) -> tuple[Any, str | None]:
         return None, f"{type(exc).__name__}: {exc}"
 
 
+FINAL_WEIGHTS = Path(FINAL_MODEL)
+
+
 def resolve_model_path(use_pretrained: bool) -> str:
-    """Pick a weights file, preferring the fine-tuned model when it is present."""
-    if not use_pretrained and Path(FINAL_MODEL).exists():
-        return FINAL_MODEL
-    return PRETRAINED_FALLBACK
+    """Pick a weights file.
+
+    The fine-tuned model is used unless the checkbox explicitly asks for the
+    generic backbone. This deliberately does **not** fall back on its own when
+    the fine-tuned file is missing: ``yolo26n-cls.pt`` has never seen maize
+    disease, so silently swapping to it would produce confident nonsense about
+    ImageNet classes. A missing fine-tuned checkpoint is a deployment fault and
+    has to surface as one.
+    """
+    if use_pretrained:
+        return PRETRAINED_FALLBACK
+    return FINAL_MODEL
+
+
+def missing_weights_hint(model_path: str) -> str | None:
+    """Explain how to fix a missing checkpoint, or return ``None`` if fine.
+
+    A bare ``FileNotFoundError`` is not actionable for anyone who deployed this
+    from git, because the obvious cause is that the weights are gitignored and
+    therefore never made it into the repo.
+    """
+    if Path(model_path).exists():
+        return None
+
+    if Path(model_path).name == Path(FINAL_MODEL).name:
+        return (
+            f"`{model_path}` is not on disk. The weights are ignored by `.gitignore` "
+            "(`*.pt`), so they are not in the repository and a deploy from git will "
+            "not contain them.\n\n"
+            "To fix it, commit the checkpoint:\n\n"
+            f"    git add -f {model_path}\n"
+            "    git commit -m 'Add fine-tuned maize disease weights'\n"
+            "    git push\n\n"
+            "or, to keep binaries out of git, host the file somewhere public and add a "
+            "download step in `load_model` before the `YOLO(...)` call. Until one of "
+            "those happens, detection is unavailable on this deployment."
+        )
+
+    return (
+        f"`{model_path}` is not on disk and could not be downloaded. The generic "
+        "pretrained backbone is only a fallback; it has never seen maize disease, so "
+        "its predictions are not meaningful for this task."
+    )
 
 
 def decode_image(uploaded: Any) -> tuple[np.ndarray | None, str | None]:
@@ -541,6 +583,9 @@ with st.sidebar:
             unsafe_allow_html=True,
         )
         st.error(model_error, icon="\U0001F534")
+        hint = missing_weights_hint(model_path)
+        if hint:
+            st.warning(hint, icon="\U0001F4E5")
 
     st.markdown("#### Model performance")
     m = YOLO26N_METRICS
@@ -704,6 +749,13 @@ with tab_detect:
                 )
 
             st.markdown("")
+
+            if model_error is not None:
+                st.error(
+                    "Detection is unavailable because the model could not be loaded. "
+                    "The reason is shown in the sidebar under **Model status**.",
+                    icon="\U0001F534",
+                )
 
             if st.button(
                 "Run Detection",
