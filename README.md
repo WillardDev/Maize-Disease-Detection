@@ -95,6 +95,7 @@ maize_disease/
 │   ├── yolo26s-cls.pt                 # larger variant (section 7.3)
 │   └── maize_disease_yolo26s.pt       # final trained model, ready to use
 ├── Maize_Disease_Detection_YOLO.ipynb # the full 0-11 pipeline
+├── app.py                             # single-file Streamlit app (detection, info, metrics)
 ├── slides_maize_disease.pptx          # 19-slide talk: every figure with its insight
 ├── requirements.txt
 ├── README.md
@@ -113,11 +114,35 @@ Generated during a run and safe to delete:
 pip install -r requirements.txt
 ```
 
-That covers `ultralytics` (Model A), `tensorflow` (Model B), `opencv-python` (image reading), `scikit-learn` (confusion matrices and reports), `nbconvert` (to run the notebook end to end) and `python-pptx` (to rebuild the deck). `tensorflow` pulls in Keras. On Apple silicon it runs on the CPU, which is a large part of why Model B trains slower than Model A.
+That covers `ultralytics` (Model A), `tensorflow` (Model B), `opencv-python` (image reading), `scikit-learn` (confusion matrices and reports), `streamlit` (to run the app), `nbconvert` (to run the notebook end to end) and `python-pptx` (to rebuild the deck). `tensorflow` pulls in Keras. On Apple silicon it runs on the CPU, which is a large part of why Model B trains slower than Model A.
+
+If you only want the app, `pip install streamlit ultralytics pillow` is enough — the notebook's training stack is not required.
 
 `requirements.txt` pins the exact versions this project was verified against.
 
 > **Note:** this project was developed against `tensorflow 2.22.0rc0` with `keras-nightly`, because no stable TensorFlow release supports Python 3.14. A stable Python (3.11–3.12) with a stable TensorFlow is recommended for reproducibility.
+
+## Running the App
+
+`app.py` is self-contained and dark-themed — upload a maize leaf photo and it predicts the class
+and shows the confidence breakdown for every class.
+
+```bash
+source .venv/bin/activate
+streamlit run app.py
+```
+
+To open it on a phone, bind it to your network and use the URL Streamlit prints:
+
+```bash
+streamlit run app.py --server.address 0.0.0.0
+```
+
+The app loads `models/maize_disease_yolo26s.pt` by default and caches it, so it only loads once
+per session. It has two tabs: detection, and the measured model performance. Disease symptoms,
+favourable conditions and what to do are shown for the class the model just predicted, not as a
+catalogue of all four. It handles EXIF orientation, so photos taken on a phone are not rotated
+incorrectly.
 
 ## Running the Notebook
 
