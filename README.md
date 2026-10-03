@@ -199,6 +199,11 @@ libxrender1
 libgomp1
 ```
 
+> **`packages.txt` must contain package names only.** Cloud pipes every line straight into
+> `apt-get install` and does *not* strip comments, so a `#` note in that file makes apt try to
+> install the words in your prose — the build fails with a wall of `E: Unable to locate package`.
+> Keep all commentary in this README, not in `packages.txt`.
+
 Which library is named in the error varies with the base image — `libxcb.so.1` instead of
 `libGL.so.1` is the same fault — so list them all rather than reacting to one message.
 
@@ -206,8 +211,10 @@ Which library is named in the error varies with the base image — `libxcb.so.1`
 `ultralytics` hard-depends on `opencv-python`, so both distributions end up writing the same
 `cv2` directory. The `packages.txt` route avoids that entirely.
 
-This was verified by running `app.py`'s own `load_model()` inside `python:3.12-slim` with nothing
-but `packages.txt` installed — it loads the weights and classifies correctly.
+Verified by running `app.py`'s own `load_model()` and a real prediction inside
+`python:3.14-slim-trixie` — Cloud's distro and Python — with nothing but `packages.txt`
+installed: the weights load and `Corn_Blight (1135).jpg` classifies as Northern Corn Leaf Blight
+at 0.5116, matching the notebook.
 
 ### Camera capture on a phone
 
