@@ -97,6 +97,7 @@ maize_disease/
 ├── Maize_Disease_Detection_YOLO.ipynb # the full 0-11 pipeline
 ├── app.py                             # single-file Streamlit app (detection, info, metrics)
 ├── .streamlit/config.toml             # headless server + dark theme for deployment
+├── packages.txt                       # apt libs Streamlit Cloud needs for OpenCV
 ├── slides_maize_disease.pptx          # 19-slide talk: every figure with its insight
 ├── requirements.txt
 ├── README.md
@@ -172,6 +173,41 @@ Two further points about a hosted deployment:
 
 `.streamlit/config.toml` sets `headless`, a 20 MB upload cap and the dark theme, so the page is
 dark before the injected CSS is even parsed.
+
+### `packages.txt`: the libGL fix
+
+If the app reports
+
+```
+ImportError: libGL.so.1: cannot open shared object file: No such file or directory
+```
+
+the host is missing GUI libraries. Ultralytics imports OpenCV, and `opencv-python` is a **GUI**
+build linked against X and GL — which a headless container does not have. The app is fine; the
+system libraries are missing.
+
+Streamlit Community Cloud installs apt packages listed one-per-line in `packages.txt` at the
+repository root, so this repo ships that file:
+
+```
+libgl1
+libglib2.0-0
+libxcb1
+libsm6
+libxext6
+libxrender1
+libgomp1
+```
+
+Which library is named in the error varies with the base image — `libxcb.so.1` instead of
+`libGL.so.1` is the same fault — so list them all rather than reacting to one message.
+
+**Alternative:** install `opencv-python-headless`, which has no GUI dependencies. It works, but
+`ultralytics` hard-depends on `opencv-python`, so both distributions end up writing the same
+`cv2` directory. The `packages.txt` route avoids that entirely.
+
+This was verified by running `app.py`'s own `load_model()` inside `python:3.12-slim` with nothing
+but `packages.txt` installed — it loads the weights and classifies correctly.
 
 ### Camera capture on a phone
 

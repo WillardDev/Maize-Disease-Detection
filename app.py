@@ -408,13 +408,44 @@ def resolve_model_path(use_pretrained: bool) -> str:
     return FINAL_MODEL
 
 
-def missing_weights_hint(model_path: str) -> str | None:
-    """Explain how to fix a missing checkpoint, or return ``None`` if fine.
+def deployment_hint(model_path: str, error: str | None) -> str | None:
+    """Turn a model-load failure into an actionable fix, or ``None`` if unclear.
 
-    A bare ``FileNotFoundError`` is not actionable for anyone who deployed this
-    from git, because the obvious cause is that the weights are gitignored and
-    therefore never made it into the repo.
+    Two deployment faults account for nearly every "the model could not be
+    loaded" report, and in both cases the raw exception names the symptom rather
+    than the cause:
+
+    * the checkpoint was gitignored, so a deploy from git never had it;
+    * ``opencv-python`` is a GUI build and the host is headless, so importing
+      Ultralytics dies on ``libGL.so.1``.
     """
+    text = (error or "")
+
+    # Missing GUI/GL libraries: the classic headless-container failure.
+    if "libGL" in text or "libgthread" in text or "libxcb" in text or (
+        "shared object file" in text
+    ):
+        library = next(
+            (lib for lib in ("libGL.so.1", "libxcb.so.1", "libgthread") if lib in text),
+            "a GUI shared library",
+        )
+        return (
+            f"`{library}` is missing, which means the host has no GUI libraries. "
+            "Ultralytics imports OpenCV, and the default `opencv-python` wheel links "
+            "against them, so the import fails on a headless server.\n\n"
+            "For Streamlit Community Cloud, add the system packages and redeploy:\n\n"
+            "    libgl1\n"
+            "    libglib2.0-0\n"
+            "    libxcb1\n"
+            "    libsm6\n"
+            "    libxext6\n"
+            "    libxrender1\n\n"
+            "each on its own line in a `packages.txt` file at the repository root. "
+            "Alternatively install `opencv-python-headless` instead of "
+            "`opencv-python` - but `ultralytics` depends on the latter, so the two "
+            "can end up fighting over the same `cv2` directory."
+        )
+
     if Path(model_path).exists():
         return None
 
@@ -583,7 +614,7 @@ with st.sidebar:
             unsafe_allow_html=True,
         )
         st.error(model_error, icon="\U0001F534")
-        hint = missing_weights_hint(model_path)
+        hint = deployment_hint(model_path, model_error)
         if hint:
             st.warning(hint, icon="\U0001F4E5")
 

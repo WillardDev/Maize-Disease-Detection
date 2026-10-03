@@ -1,0 +1,29 @@
+# System packages for Streamlit Community Cloud (apt).
+#
+# Ultralytics imports OpenCV, and the default `opencv-python` wheel is a GUI
+# build that links against X and GL shared libraries. A headless container has
+# none of them, so `from ultralytics import YOLO` dies with:
+#
+#     ImportError: libGL.so.1: cannot open shared object file
+#
+# (which library is named first depends on the base image; `libxcb.so.1` is the
+# same class of failure). Installing these makes the import succeed.
+#
+# Verified against `opencv-python==5.0.0.93` on `python:3.12-slim`.
+#
+# `libgomp1` is the GNU OpenMP runtime that PyTorch links against. The CPU-only
+# wheel bundles it, but the default CUDA build pulled from PyPI does not, so it
+# is listed here to cover both.
+#
+# Alternative: drop `opencv-python` in favour of `opencv-python-headless`,
+# which has no GUI dependencies. Not used here because `ultralytics` declares a
+# hard dependency on `opencv-python`, so installing the headless variant would
+# put two distributions in the same `cv2` directory.
+
+libgl1
+libglib2.0-0
+libxcb1
+libsm6
+libxext6
+libxrender1
+libgomp1
