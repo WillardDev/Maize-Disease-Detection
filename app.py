@@ -557,7 +557,7 @@ def brand() -> None:
           <div class="brand-mark">M</div>
           <div>
             <div class="brand-name">Maize Leaf Disease Detection</div>
-            <div class="brand-sub">YOLO26 classifier &middot; 4 classes &middot; 4,186 training images</div>
+            <div class="brand-sub">YOLO26 classifier &middot; 4 classes &middot; 4,188 labelled images</div>
           </div>
         </div>
         """,
