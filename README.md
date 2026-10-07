@@ -5,9 +5,9 @@
 Two projects in one repository:
 
 1. **Image classification** — classify a maize leaf photo into **Blight**, **Common Rust**, **Gray Leaf Spot** or **Healthy**, comparing a pretrained YOLO26 classifier against a custom CNN built from scratch in Keras.
-2. **Advisory chatbot (RAG)** — an English/Swahili retrieval-augmented chatbot that answers questions about maize farming in Kenya from a curated knowledge base, integrated as a third tab in the same Streamlit app.
+2. **Advisory chatbot (RAG)** — an English/Swahili retrieval-augmented chatbot that answers questions about maize farming in Kenya from a curated PDF knowledge base, integrated as a third tab in the same Streamlit app. Farmer profiles and full chat history are stored in **MySQL**.
 
-A farmer can photograph a leaf, get an instant diagnosis, then continue the conversation for management advice — in English or Swahili.
+A farmer can photograph a leaf, get an instant diagnosis, then continue the conversation for management advice — in English or Swahili. Conversations are saved so they can be revisited and analysed later.
 
 ## Problem Statement
 
@@ -60,6 +60,14 @@ Source: [Kaggle — Corn or Maize Leaf Disease Dataset](https://www.kaggle.com/d
 | `Olwande_Smallholder_Maize_Efficiency_Kenya.pdf` | Study on smallholder maize efficiency in Kenya |
 | `diversity in maize production environments and practices.pdf` | Maize production environments and on-farm practices |
 | `DISEASE_INFO` (from `app.py`) | Seed knowledge for the four leaf-disease classes |
+
+**MySQL database** (`maize_advisory`)
+
+| Table | Key fields | Purpose |
+|---|---|---|
+| `farmers` | `id, full_name, county, preferred_lang, created_at` | Farmer profiles (no passwords — select or create a profile in the sidebar) |
+| `chat_sessions` | `id, farmer_id, started_at, language` | One conversation thread |
+| `chat_messages` | `id, session_id, farmer_id, role, message, language, sources, feedback, created_at` | Full chat history, retrieved citations, feedback |
 
 ## Project Structure
 
@@ -119,3 +127,4 @@ maize_disease/
 - **8. Inference Pipeline**
 - **9. Export**
 - **10. Monitoring & Feedback**
+- **11. Database & Chat History**
