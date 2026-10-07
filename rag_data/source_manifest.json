@@ -1,0 +1,75 @@
+{
+  "generated_at": "2026-10-07T10:13:22+00:00",
+  "config": {
+    "embedding_model": "intfloat/multilingual-e5-small",
+    "chunk_words": 220,
+    "overlap_words": 40,
+    "languages": [
+      "en",
+      "sw"
+    ],
+    "seed": 42
+  },
+  "sources": [
+    {
+      "source_id": "S00",
+      "filename": null,
+      "title": "Maize leaf disease seed knowledge (app.py)",
+      "topic": "disease",
+      "language": "en",
+      "licence": "project asset",
+      "sha256": null,
+      "chunks": 4
+    },
+    {
+      "source_id": "S01",
+      "filename": "diversity in maize production environments and practices.pdf",
+      "title": "Diversity in maize production environments and practices",
+      "topic": "agronomy",
+      "language": "en",
+      "licence": "unverified",
+      "sha256": "1aabed3d8f7f643b20089289212fdb350145b048c8923842f45d7dfe98a16e4c",
+      "chunks": 29
+    },
+    {
+      "source_id": "S02",
+      "filename": "MAIZE GROWERS GUIDE.pdf",
+      "title": "Maize Growers Guide",
+      "topic": "agronomy",
+      "language": "en",
+      "licence": "unverified",
+      "sha256": "454c952291280ed5a48b53fd2845d5b1197c4140cfbe8c023eab2be94b197092",
+      "chunks": 24
+    },
+    {
+      "source_id": "S03",
+      "filename": "National-Agriculture-Production-Report-2025.pdf",
+      "title": "National Agriculture Production Report 2025",
+      "topic": "statistics",
+      "language": "en",
+      "licence": "unverified",
+      "sha256": "72a8a2f73d1206e7b17b930544c667e9f659913db59be694d5a821fcc43be2f0",
+      "chunks": 326
+    },
+    {
+      "source_id": "S04",
+      "filename": "Olwande_Smallholder_Maize_Efficiency_Kenya.pdf",
+      "title": "Smallholder maize efficiency in Kenya (Olwande)",
+      "topic": "economics",
+      "language": "en",
+      "licence": "unverified",
+      "sha256": "46d25e01d128e5be987ba2c73cff619375709dac4fd2cd3eeb0031d626b5ba53",
+      "chunks": 27
+    },
+    {
+      "source_id": "S05",
+      "filename": "Planting_strategies_of_maize_farmers_in_Kenya_a_si.pdf",
+      "title": "Planting strategies of maize farmers in Kenya",
+      "topic": "agronomy",
+      "language": "en",
+      "licence": "unverified",
+      "sha256": "af7816c7cbfc45984dbe85b85c21dc03a15c9f8874f25e93a6e6cd09bb2ba36a",
+      "chunks": 48
+    }
+  ]
+}

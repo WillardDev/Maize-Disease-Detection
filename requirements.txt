@@ -24,6 +24,14 @@ jupyter-client==8.9.1
 # building the presentation deck (optional)
 python-pptx==1.0.2
 
+# RAG advisory chatbot (RAG_Advisory_Chatbot.ipynb)
+# pymupdf + pandas are used from section 1; the rest from section 3 onwards.
+pymupdf==1.28.2
+pandas==3.0.6
+sentence-transformers==6.1.0
+rank-bm25==0.2.2
+faiss-cpu==1.15.1
+
 # NOTE: tensorflow 2.22.0rc0 and the versions above were used on Python 3.14,
 # where no stable TensorFlow release is available yet (keras-nightly was used
 # during development). On Python 3.11 or 3.12 install a stable tensorflow
