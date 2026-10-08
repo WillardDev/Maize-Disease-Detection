@@ -6,7 +6,8 @@
 ultralytics==8.4.165
 tensorflow==2.22.0rc0
 opencv-python==5.0.0.93
-scikit-learn==1.9.0
+scikit-learn==1.9.1
+scipy==1.18.1
 numpy==2.5.0
 matplotlib==3.11.1
 pillow==12.2.0
@@ -30,7 +31,6 @@ pymupdf==1.28.2
 pandas==3.0.6
 sentence-transformers==6.1.0
 rank-bm25==0.2.2
-faiss-cpu==1.15.1
 sentencepiece==0.2.2
 
 # NOTE: tensorflow 2.22.0rc0 and the versions above were used on Python 3.14,
